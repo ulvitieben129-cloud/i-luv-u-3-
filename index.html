@@ -1,0 +1,1266 @@
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="https://i.postimg.cc/qB1WsNqM/IMG-9894.jpg">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Bubblen</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #f2f2f2;
+            --chat-bg: #abc1d1;
+            --primary-blue: #007aff;
+            --artist-gradient: linear-gradient(135deg, #6a5acd, #87cefa); /* 紫蓝到浅蓝 */
+            --border-gray: #e0e0e0;
+            --heart-pink: #ff69b4;
+            --heart-dark-pink: #d14788;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: #fff;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 顶部状态栏预留 */
+        .status-bar-spacer {
+            height: 59px; /* iPhone notch area */
+            background: transparent;
+            width: 100%;
+            flex-shrink: 0;
+            z-index: 1000;
+        }
+
+        /* 通用隐藏/显示 */
+        .page {
+            flex: 1;
+            overflow-y: auto;
+            display: none;
+            position: relative;
+            background: #fff;
+        }
+        .page.active {
+            display: block;
+        }
+
+        /* 底部导航栏 */
+        .bottom-nav {
+            height: 60px;
+            border-top: 1px solid var(--border-gray);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background: #fff;
+            flex-shrink: 0;
+            z-index: 999;
+        }
+
+        .nav-item {
+            font-size: 24px;
+            color: #ccc;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .nav-item.active {
+            color: #000;
+        }
+
+        /* 信息图标特殊效果 */
+        .nav-item.chat-icon.active .fa-comment {
+            font-weight: 900; /* Solid */
+        }
+        .nav-item.chat-icon.active::after {
+            content: '••';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 10px;
+            letter-spacing: 2px;
+        }
+
+        /* ==================== PAGE 1: FRIENDS ==================== */
+        .header-bar {
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end; /* Align bottom */
+            height: 50px;
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: 800; /* 粗体 */
+        }
+
+        .header-icons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 5px; /* 比 Friends 往上一点 */
+            font-size: 18px;
+        }
+
+        .profile-section {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid var(--border-gray);
+        }
+
+        /* 修改：所有头像改为圆形 */
+        .small-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%; /* 改为圆形 */
+            background-color: var(--primary-blue); /* 默认蓝色 */
+            object-fit: cover;
+            margin-right: 15px;
+            cursor: pointer;
+        }
+
+        .profile-info h3 {
+            font-size: 16px;
+        }
+        .profile-info p {
+            color: gray;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        /* 个人主页编辑页面 (Overlay) */
+        #edit-profile-page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #999999; /* 默认浅灰色 */
+            background-size: cover;
+            background-position: center;
+            z-index: 2000;
+            display: none;
+        }
+
+        .edit-close-btn {
+            position: absolute;
+            top: 50px;
+            left: 20px;
+            font-size: 24px;
+            color: white;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+            cursor: pointer;
+        }
+
+        .profile-content-wrapper {
+            position: absolute;
+            bottom: 15%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .artist-badge-row {
+            display: flex;
+            align-items: center;
+            gap: 6px; /* 更紧凑 */
+            margin-bottom: 5px;
+            margin-top: 15px;
+        }
+
+        .artist-badge {
+            background: var(--artist-gradient);
+            color: white;
+            padding: 1px 8px; /* 更紧凑 */
+            border-radius: 12px; /* 改为椭圆形 */
+            font-size: 10px;
+            font-weight: bold;
+            letter-spacing: 0.5px; /* 减小字母间距 */
+            min-width: 55px; /* 确保足够长 */
+            text-align: center;
+        }
+
+        .profile-name-display {
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            margin-left: 2px; /* 更紧凑 */
+        }
+
+        .profile-desc-display {
+            color: #ddd;
+            font-size: 12px;
+            margin-bottom: 10px; /* 更紧凑 */
+        }
+
+        .white-border-box {
+            border: 1px solid rgba(255, 255, 255, 0.5); /* 更透明 */
+            background: transparent;
+            padding: 3px 10px; /* 更小 */
+            color: white;
+            font-size: 11px; /* 更小 */
+            border-radius: 15px; /* 稍微圆一点 */
+            margin-bottom: 8px;
+            min-width: 140px; /* 更小 */
+            max-width: 180px; /* 更小 */
+            text-align: center;
+        }
+
+        /* 隐藏的文件输入框 */
+        input[type="file"] {
+            display: none;
+        }
+
+        /* ==================== PAGE 2: CHATS ==================== */
+        .chat-list-item {
+            display: flex;
+            padding: 15px 20px;
+            align-items: center;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+        }
+        
+        /* 修改：聊天列表头像改为圆形 */
+        .chat-list-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%; /* 改为圆形 */
+            background: #eee;
+            margin-right: 15px;
+            object-fit: cover;
+        }
+
+        /* 聊天室页面 */
+        #chat-room-page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #fff;
+            z-index: 1500;
+            display: none;
+            flex-direction: column;
+        }
+
+        .chat-room-header {
+            height: 60px; /* 增加高度 */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 15px;
+            background: rgba(255,255,255,0.9);
+            border-bottom: 1px solid #eee;
+            margin-top: 10px; /* 增加上边距，使其靠下 */
+        }
+
+        .chat-room-bg {
+            flex: 1;
+            background-color: var(--chat-bg);
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        /* 天数显示 */
+        .days-counter {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255,255,255,0.8);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            z-index: 10;
+        }
+        .days-heart {
+            color: var(--heart-pink); /* 浅粉 */
+        }
+        .days-heart i {
+             background: -webkit-linear-gradient(45deg, var(--heart-pink) 50%, var(--heart-dark-pink) 50%);
+             -webkit-background-clip: text;
+             -webkit-text-fill-color: transparent;
+        }
+        /* 消息区域 */
+        .messages-area {
+            flex: 1;
+            padding: 40px 10px 10px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px; /* 更紧凑 */
+        }
+
+        /* 消息样式 */
+        .msg-row {
+            display: flex;
+            margin-bottom: 8px; /* 更紧凑 */
+            width: 100%;
+        }
+
+        /* 自己的消息 (Default right) */
+        .msg-row.my-msg {
+            justify-content: flex-end;
+        }
+        .msg-row.my-msg .msg-bubble {
+            background-color: #ffe066; /* 黄色气泡模拟 Kakao/Bubble */
+            color: #000;
+            border-radius: 12px;
+            padding: 8px 12px;
+            max-width: 70%;
+            word-wrap: break-word;
+            font-size: 14px;
+        }
+        .msg-row.my-msg img {
+            max-width: 150px;
+            border-radius: 10px;
+        }
+
+        /* 翻译样式 - 整合到气泡内 */
+        .trans-divider {
+            border-top: 1px dashed #aaa;
+            margin-top: 6px;
+            padding-top: 6px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* 重要：ARTIST 视角查看自己的消息 - 更紧凑的样式 */
+        .msg-row.artist-view-mode {
+            justify-content: flex-start; /* 变到左边 */
+            margin-bottom: 5px; /* 更紧凑 */
+        }
+        
+        .msg-row.artist-view-mode .avatar-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-right: 8px; /* 更紧凑 */
+        }
+
+        /* 修改：聊天室头像外圈 */
+        .msg-row.artist-view-mode .avatar-wrapper {
+            position: relative;
+            padding: 2px; /* 更细的边框 */
+            border-radius: 50%; /* 改为圆形 */
+            background: var(--artist-gradient); /* 渐变边框 */
+        }
+        
+        /* 修改：聊天室头像图片本身 */
+        .msg-row.artist-view-mode .avatar-wrapper img {
+            display: block;
+            width: 34px; /* 减小2px，增加内边距 */
+            height: 34px; /* 减小2px，增加内边距 */
+            border-radius: 50%; /* 改为圆形 */
+            background: #fff; /* 防止透明 */
+            object-fit: cover;
+        }
+        
+        /* 修改：头像外圈（渐变边框） */
+        .msg-row.artist-view-mode .avatar-wrapper {
+            position: relative;
+            padding: 2px; /* 头像和边框之间的距离 */
+            border-radius: 50%; /* 改为圆形 */
+            background: var(--artist-gradient); /* 渐变颜色 */
+            display: flex; /* 确保图片居中 */
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 修改：头像图片本身 */
+        .msg-row.artist-view-mode .avatar-wrapper img {
+            display: block;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%; /* 改为圆形 */
+            border: 3px solid #abc1d1; 
+            object-fit: cover;
+            background: #fff;
+        }
+
+        .msg-row.artist-view-mode .msg-content-col {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            max-width: 75%;
+        }
+
+        .msg-row.artist-view-mode .name-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 2px; /* 更紧凑 */
+            gap: 3px; /* 更紧凑 */
+        }
+
+        .msg-row.artist-view-mode .artist-badge-small {
+            background: var(--artist-gradient);
+            color: white;
+            font-size: 9px;
+            padding: 1px 5px; /* 更紧凑 */
+            border-radius: 8px; /* 改为椭圆形 */
+            margin-right: 3px; /* 更紧凑 */
+            font-weight: bold;
+            min-width: 48px; /* 更小 */
+            text-align: center;
+            letter-spacing: 0.3px; /* 减小字母间距 */
+        }
+
+        .msg-row.artist-view-mode .name-text {
+            font-size: 11px; /* 更小 */
+            color: #333;
+            font-weight: 500;
+        }
+
+        .msg-row.artist-view-mode .msg-bubble {
+            background-color: #fff;
+            color: #000;
+            border-radius: 12px;
+            padding: 6px 10px; /* 更紧凑 */
+            max-width: 100%;
+            word-wrap: break-word;
+            font-size: 13px; /* 更小 */
+        }
+        .msg-row.artist-view-mode .msg-bubble img {
+            max-width: 140px; /* 更小 */
+            border-radius: 8px; /* 更小 */
+        }
+
+        /* 底部输入栏 */
+        .chat-input-area {
+            background: #fff;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-top: 1px solid #eee;
+        }
+
+        .plus-btn {
+            font-size: 24px;
+            color: #888;
+            cursor: pointer;
+            position: relative;
+            background: transparent !important; /* 确保没有黑色背景 */
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Plus Menu */
+        .plus-menu {
+            position: absolute;
+            bottom: 50px;
+            left: 10px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            display: none;
+            padding: 10px;
+            flex-direction: row;
+            gap: 15px;
+            z-index: 100;
+        }
+        .plus-menu.show {
+            display: flex;
+        }
+        .plus-menu-item {
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 5px;
+            transition: background-color 0.2s;
+            background: transparent !important;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .plus-menu-item:active {
+            background-color: rgba(0,0,0,0.1) !important;
+        }
+
+        .chat-input-box {
+            flex: 1;
+            background: #f2f2f2;
+            border-radius: 20px;
+            padding: 8px 15px;
+            display: flex;
+            align-items: center;
+        }
+        .chat-input-box input {
+            border: none;
+            background: transparent;
+            flex: 1;
+            outline: none;
+            font-size: 16px;
+        }
+
+        .send-btn-icon {
+            font-size: 20px;
+            color: #888;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        
+        .paper-plane {
+             transform: rotate(0deg);
+        }
+
+        /* 设置菜单 (Modal) */
+        .settings-modal {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 70%;
+            height: 100%;
+            background: #fff;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            z-index: 1600;
+            display: flex;
+            flex-direction: column;
+        }
+        .settings-modal.open {
+            transform: translateX(0);
+        }
+        
+        .settings-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+            display: flex;
+            flex-direction: column;
+        }
+        .settings-label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .lang-options {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+            display: none; /* hidden by default */
+        }
+        .lang-btn {
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        .lang-btn.selected {
+            background: #eee;
+            border-color: #999;
+        }
+
+        /* ==================== PAGE 3: MORE ==================== */
+        .more-header {
+            padding: 15px 20px;
+            font-size: 24px;
+            font-weight: 800;
+        }
+        
+        .more-profile {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        /* 修改：大头像改为圆形 */
+        .big-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%; /* 改为圆形 */
+            background: var(--primary-blue);
+            margin-bottom: 10px;
+            object-fit: cover;
+            cursor: pointer;
+        }
+        
+        .more-name {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        .more-email {
+            color: gray;
+            font-size: 12px;
+        }
+
+        .more-list {
+            padding: 0 20px;
+        }
+        .more-list-item {
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 16px;
+            color: #333;
+        }
+
+        /* 新增：聊天列表头像更换按钮 */
+        .change-chat-avatar-btn {
+            position: absolute;
+            right: 20px;
+            font-size: 16px;
+            color: #007aff;
+            cursor: pointer;
+            padding: 5px;
+        }
+        
+        /* 新增：聊天室头像更换相关样式 */
+        .chat-avatar-container {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .change-chat-avatar-input {
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="status-bar-spacer"></div>
+
+    <div id="page-friends" class="page active">
+        <div class="header-bar">
+            <div class="header-title">FRIENDS</div>
+            <div class="header-icons">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <i class="fa-regular fa-store"></i> </div>
+        </div>
+        
+        <div class="profile-section">
+            <img src="" class="small-avatar user-avatar-img" onclick="openProfileEdit()">
+            <div class="profile-info">
+                <h3 class="user-name-text">（՞⸝⸝⦁᎑-⸝⸝.՞）</h3>
+                <p class="user-bio-text">🖤</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="page-chats" class="page">
+        <div class="header-bar">
+            <div class="header-title">CHATS</div>
+            <div class="header-icons">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <i class="fa-regular fa-trash-can"></i>
+            </div>
+        </div>
+
+        <div class="chat-list-item" onclick="openChatRoom()">
+            <!-- 聊天列表头像，可更换 -->
+            <div class="chat-avatar-container">
+                <img src="" id="chat-list-avatar-img" class="chat-list-avatar" 
+                     style="cursor:pointer;"
+                     onclick="event.stopPropagation(); document.getElementById('chat-list-avatar-input').click();">
+                <input type="file" id="chat-list-avatar-input" accept="image/*" class="change-chat-avatar-input" 
+                       onchange="changeChatListAvatar(this)">
+            </div>
+            <div class="profile-info">
+                <h3 id="list-room-name">은은</h3>
+                <p style="color:#888; font-size:12px;">Hello!</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="page-more" class="page">
+        <div class="more-header">MORE</div>
+        <div class="more-profile">
+            <img src="" class="big-avatar user-avatar-img" onclick="openProfileEdit()">
+            <div class="more-name user-name-text">（՞⸝⸝⦁᎑-⸝⸝.՞）</div>
+            <div class="more-email">user@example.com</div>
+        </div>
+        <div class="more-list">
+            <div class="more-list-item">My bubble</div>
+            <div class="more-list-item">STORE</div>
+            <div class="more-list-item">Notice</div>
+            <div class="more-list-item">FAQ</div>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="switchTab('friends', this)">
+            <i class="fa-solid fa-user"></i>
+        </div>
+        <div class="nav-item chat-icon" onclick="switchTab('chats', this)">
+            <i class="fa-regular fa-comment"></i>
+        </div>
+        <div class="nav-item" onclick="switchTab('more', this)">
+            <i class="fa-solid fa-ellipsis"></i>
+        </div>
+    </div>
+
+    <div id="edit-profile-page">
+        <input type="file" id="bg-file-input" accept="image/*" onchange="changeProfileBg(this)">
+        <div style="position:absolute; width:100%; height:100%; z-index:-1;" onclick="document.getElementById('bg-file-input').click()"></div>
+        
+        <div class="edit-close-btn" onclick="closeProfileEdit()">
+            <i class="fa-solid fa-xmark"></i>
+        </div>
+
+        <div class="profile-content-wrapper">
+            <input type="file" id="avatar-file-input" accept="image/*" onchange="changeAvatar(this)">
+            <img src="" class="big-avatar user-avatar-img" style="border: 2px solid white; width:80px; height:80px; margin-bottom:10px;" onclick="document.getElementById('avatar-file-input').click()">
+            
+            <div class="artist-badge-row">
+                <div class="artist-badge">ARTIST</div>
+                <div class="profile-name-display user-name-text" contenteditable="true" onblur="saveText(this, 'name')">（՞⸝⸝⦁᎑-⸝⸝.՞）</div>
+            </div>
+            
+            <div class="profile-desc-display user-bio-text" contenteditable="true" onblur="saveText(this, 'bio')">🖤</div>
+
+            <div class="white-border-box" contenteditable="true" id="bubble-tag-text">
+                Stray Kids · HYUNJIN
+            </div>
+        </div>
+    </div>
+
+    <div id="chat-room-page">
+        <div class="chat-room-header">
+            <div onclick="closeChatRoom()" style="font-size: 20px; cursor:pointer;"><i class="fa-solid fa-chevron-left"></i></div>
+            <div style="font-weight:bold;" id="chat-header-title">은은</div>
+            <div style="display:flex; gap:15px;">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <i class="fa-solid fa-bars" onclick="toggleSettings()"></i>
+            </div>
+        </div>
+
+        <div class="settings-modal" id="settings-modal">
+            <div style="padding:15px; border-bottom:1px solid #eee; text-align:right;">
+                <i class="fa-solid fa-xmark" onclick="toggleSettings()" style="font-size:20px;"></i>
+            </div>
+            <div class="settings-item">
+                <div class="settings-label">聊天室名称</div>
+                <input type="text" id="room-name-input" value="은은" oninput="updateRoomName(this.value)" style="border:1px solid #ccc; padding:5px;">
+            </div>
+            <div class="settings-item" onclick="document.getElementById('chat-bg-input').click()" style="cursor:pointer;">
+                <div class="settings-label">设置背景 (点击更换)</div>
+                <input type="file" id="chat-bg-input" accept="image/*" style="display:none" onchange="changeChatBg(this)">
+            </div>
+            <div class="settings-item">
+                <div class="settings-label" style="display:flex; justify-content:space-between;">
+                    翻译 <input type="checkbox" id="trans-toggle" onchange="toggleTransOptions(this)">
+                </div>
+                <div class="lang-options" id="lang-options">
+                    <div class="lang-btn" onclick="selectLang('zh')">中</div>
+                    <div class="lang-btn" onclick="selectLang('kr')">韩</div>
+                    <div class="lang-btn" onclick="selectLang('jp')">日</div>
+                </div>
+            </div>
+            <div class="settings-item" onclick="clearChat()" style="color:red; margin-top:auto; border-top:1px solid #eee;">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> 退出聊天室
+            </div>
+        </div>
+
+        <div class="chat-room-bg" id="chat-bg-layer">
+            <div class="days-counter">
+                <span class="days-heart"><i class="fa-solid fa-heart"></i></span> 100
+            </div>
+            
+            <div class="messages-area" id="messages-area">
+                </div>
+        </div>
+
+        <div class="chat-input-area">
+            <div class="plus-btn" onclick="togglePlusMenu()">
+                <i class="fa-solid fa-plus"></i>
+                <div class="plus-menu" id="plus-menu">
+                    <div class="plus-menu-item" onclick="triggerChatImage()">♡</div>
+                    <div class="plus-menu-item" onclick="togglePerspective()">응</div>
+                </div>
+                <input type="file" id="chat-img-input" accept="image/*" style="display:none" onchange="sendImage(this)">
+            </div>
+            
+            <div class="chat-input-box">
+                <input type="text" id="msg-input" placeholder="输入消息...">
+                <i class="fa-regular fa-face-smile" style="color:#888; cursor:pointer;"></i>
+            </div>
+            
+            <div class="send-btn-icon" onclick="sendText()">
+                <i class="fa-solid fa-paper-plane paper-plane"></i> </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 全局状态 ---
+        const state = {
+            name: "（՞⸝⸝⦁᎑-⸝⸝.՞）",
+            bio: "🖤",
+            bubbleTag: "Stray Kids · HYUNJIN",
+            avatar: "", // empty means default blue
+            profileBg: "", // empty means default gray
+            chatBg: "",
+            roomName: "은은",
+            translationOn: false,
+            targetLang: 'zh',
+            isArtistPerspective: false, // "응" mode
+            chatListAvatar: "" // 聊天列表头像
+        };
+
+        // 翻译映射表
+        const translationMap = {
+            'zh': {
+                'Hello!': '你好！',
+                'How are you?': '你好吗？',
+                'I love this song!': '我喜欢这首歌！',
+                'Good morning': '早上好',
+                'See you tomorrow': '明天见',
+                'Thank you': '谢谢'
+            },
+            'kr': {
+                'Hello!': '안녕하세요!',
+                'How are you?': '어떻게 지내세요?',
+                'I love this song!': '이 노래 좋아해요!',
+                'Good morning': '좋은 아침',
+                'See you tomorrow': '내일 봐요',
+                'Thank you': '감사합니다'
+            },
+            'jp': {
+                'Hello!': 'こんにちは！',
+                'How are you?': 'お元気ですか？',
+                'I love this song!': 'この歌が大好きです！',
+                'Good morning': 'おはようございます',
+                'See you tomorrow': 'また明日',
+                'Thank you': 'ありがとう'
+            }
+        };
+
+        // --- 初始化 ---
+        window.onload = function() {
+            // 设置默认蓝色头像
+            const avatars = document.querySelectorAll('.user-avatar-img');
+            avatars.forEach(img => {
+                if(!state.avatar) img.style.backgroundColor = "#007aff";
+            });
+            
+            // 设置聊天列表默认头像
+            const chatListAvatar = document.getElementById('chat-list-avatar-img');
+            if(!state.chatListAvatar) chatListAvatar.style.backgroundColor = "#CCCCCC";
+        };
+
+        // --- 底部导航切换 ---
+        function switchTab(tabName, el) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            document.getElementById('page-' + tabName).classList.add('active');
+            el.classList.add('active');
+        }
+
+        // --- 个人主页编辑 ---
+        function openProfileEdit() {
+            const page = document.getElementById('edit-profile-page');
+            page.style.display = 'block';
+            // Sync current data to edit page
+            document.querySelector('.profile-name-display').innerText = state.name;
+            document.querySelector('.profile-desc-display').innerText = state.bio;
+        }
+
+        function closeProfileEdit() {
+            document.getElementById('edit-profile-page').style.display = 'none';
+        }
+
+        function changeProfileBg(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    state.profileBg = e.target.result;
+                    document.getElementById('edit-profile-page').style.backgroundImage = `url(${state.profileBg})`;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function changeAvatar(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    state.avatar = e.target.result;
+                    document.querySelectorAll('.user-avatar-img').forEach(img => {
+                        img.src = state.avatar;
+                        img.style.backgroundColor = 'transparent'; // Remove default blue
+                    });
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function saveText(el, type) {
+            if(type === 'name') {
+                state.name = el.innerText;
+                document.querySelectorAll('.user-name-text').forEach(t => t.innerText = state.name);
+            } else if (type === 'bio') {
+                state.bio = el.innerText;
+                document.querySelectorAll('.user-bio-text').forEach(t => t.innerText = state.bio);
+            }
+        }
+
+        // --- 聊天室功能 ---
+        function openChatRoom() {
+            document.getElementById('chat-room-page').style.display = 'flex';
+        }
+
+        function closeChatRoom() {
+            document.getElementById('chat-room-page').style.display = 'none';
+        }
+
+        function toggleSettings() {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.toggle('open');
+        }
+
+        function updateRoomName(val) {
+            state.roomName = val;
+            document.getElementById('chat-header-title').innerText = val;
+            document.getElementById('list-room-name').innerText = val;
+        }
+
+        function changeChatBg(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    state.chatBg = e.target.result;
+                    document.getElementById('chat-bg-layer').style.backgroundImage = `url(${state.chatBg})`;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // 新增：更换聊天列表头像
+        function changeChatListAvatar(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    state.chatListAvatar = e.target.result;
+                    const chatListAvatarImg = document.getElementById('chat-list-avatar-img');
+                    chatListAvatarImg.src = state.chatListAvatar;
+                    chatListAvatarImg.style.backgroundColor = 'transparent';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function toggleTransOptions(checkbox) {
+            state.translationOn = checkbox.checked;
+            document.getElementById('lang-options').style.display = checkbox.checked ? 'flex' : 'none';
+            // 如果开启了翻译，重新渲染所有消息
+            if(state.translationOn) {
+                applyTranslationToAllMessages();
+            } else {
+                // 如果关闭翻译，恢复原始消息
+                restoreOriginalMessages();
+            }
+        }
+
+        function selectLang(lang) {
+            state.targetLang = lang;
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('selected'));
+            event.target.classList.add('selected');
+            
+            // 如果翻译已开启，立即应用新语言的翻译
+            if(state.translationOn) {
+                applyTranslationToAllMessages();
+            }
+        }
+
+        // 应用翻译到所有消息
+        function applyTranslationToAllMessages() {
+            const allMsgBubbles = document.querySelectorAll('.msg-bubble');
+            allMsgBubbles.forEach(bubble => {
+                const originalText = bubble.getAttribute('data-original') || bubble.childNodes[0]?.nodeValue?.trim();
+                if(originalText) {
+                    // 保存原始文本
+                    if(!bubble.getAttribute('data-original')) {
+                        bubble.setAttribute('data-original', originalText);
+                    }
+                    
+                    // 获取翻译
+                    const translatedText = translationMap[state.targetLang]?.[originalText] || originalText;
+                    
+                    // 更新显示
+                    if(bubble.querySelector('.trans-divider')) {
+                        // 如果已有翻译分隔线，更新翻译部分
+                        bubble.childNodes[0].nodeValue = originalText;
+                        bubble.querySelector('.trans-divider').innerText = translatedText;
+                    } else {
+                        // 如果没有翻译分隔线，添加一个
+                        const separator = document.createElement('div');
+                        separator.className = 'trans-divider';
+                        separator.innerText = translatedText;
+                        
+                        // 清空气泡内容并重新添加
+                        const textNode = document.createTextNode(originalText);
+                        bubble.innerHTML = '';
+                        bubble.appendChild(textNode);
+                        bubble.appendChild(separator);
+                    }
+                }
+            });
+        }
+
+        // 恢复原始消息
+        function restoreOriginalMessages() {
+            const allMsgBubbles = document.querySelectorAll('.msg-bubble');
+            allMsgBubbles.forEach(bubble => {
+                const originalText = bubble.getAttribute('data-original');
+                if(originalText) {
+                    // 移除翻译分隔线
+                    const transDiv = bubble.querySelector('.trans-divider');
+                    if(transDiv) {
+                        transDiv.remove();
+                    }
+                    
+                    // 恢复原始文本
+                    bubble.childNodes[0].nodeValue = originalText;
+                }
+            });
+        }
+
+        function clearChat() {
+            if(confirm("确定退出并清除聊天记录吗？")) {
+                document.getElementById('messages-area').innerHTML = '';
+                // Clear BG
+                state.chatBg = "";
+                document.getElementById('chat-bg-layer').style.backgroundImage = "";
+                toggleSettings(); // close menu
+                closeChatRoom(); // go back
+            }
+        }
+
+        // --- 消息发送逻辑 ---
+        function togglePlusMenu() {
+            document.getElementById('plus-menu').classList.toggle('show');
+        }
+
+        function triggerChatImage() {
+            document.getElementById('chat-img-input').click();
+            togglePlusMenu();
+        }
+
+        function sendImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    addMessage(null, e.target.result);
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function sendText() {
+            const input = document.getElementById('msg-input');
+            const text = input.value.trim();
+            if(text) {
+                addMessage(text, null);
+                input.value = '';
+            }
+        }
+
+        function addMessage(text, imgSrc) {
+            const container = document.getElementById('messages-area');
+            const msgRow = document.createElement('div');
+            
+            // 基础类：my-msg (默认也是自己的消息)
+            msgRow.className = 'msg-row my-msg';
+
+            // 如果当前是"응"模式，直接添加 artist-view-mode 类
+            if(state.isArtistPerspective) {
+                msgRow.classList.add('artist-view-mode');
+            }
+
+            let contentHTML = '';
+
+            // 如果是"응"模式 (对方视角看自己)
+            if(state.isArtistPerspective) {
+                // 需要构建头像、Badge结构
+                const avatarSrc = state.avatar || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; 
+                
+                let innerContent = '';
+                if(text) {
+                    // 保存原始文本
+                    const translatedText = state.translationOn ? 
+                        (translationMap[state.targetLang]?.[text] || text) : text;
+                    
+                    innerContent = `<div class="msg-bubble" data-original="${text}">${text}`;
+                    if(state.translationOn) {
+                        innerContent += `<div class="trans-divider">${translatedText}</div>`;
+                    }
+                    innerContent += `</div>`;
+                } else if(imgSrc) {
+                    innerContent = `<div class="msg-bubble"><img src="${imgSrc}" style="max-width:150px; border-radius:10px;"></div>`;
+                }
+
+                contentHTML = `
+                    <div class="avatar-container">
+                        <div class="avatar-wrapper">
+                            <img src="${avatarSrc}">
+                        </div>
+                    </div>
+                    <div class="msg-content-col">
+                        <div class="name-row">
+                            <span class="artist-badge-small">ARTIST</span>
+                            <span class="name-text">${state.name}</span>
+                        </div>
+                        ${innerContent}
+                    </div>
+                `;
+            } else {
+                // 正常视角 (自己在右边)
+                if(text) {
+                    // 保存原始文本
+                    const translatedText = state.translationOn ? 
+                        (translationMap[state.targetLang]?.[text] || text) : text;
+                    
+                    contentHTML = `<div class="msg-bubble" data-original="${text}">${text}`;
+                    if(state.translationOn) {
+                        contentHTML += `<div class="trans-divider">${translatedText}</div>`;
+                    }
+                    contentHTML += `</div>`;
+                } else if(imgSrc) {
+                    contentHTML = `<img src="${imgSrc}">`;
+                }
+            }
+
+            msgRow.innerHTML = contentHTML;
+            container.appendChild(msgRow);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // --- 核心：视角切换 (응) ---
+        function togglePerspective() {
+            state.isArtistPerspective = !state.isArtistPerspective;
+            
+            // 提示用户
+            const menu = document.getElementById('plus-menu');
+            menu.classList.remove('show');
+            
+            // 重新渲染所有现有的消息
+            const allMsgs = document.querySelectorAll('.msg-row');
+            
+            allMsgs.forEach(row => {
+                // 提取内容
+                let rawText = "";
+                let rawImgSrc = "";
+                
+                // 检查当前是哪种模式
+                const isCurrentlyArtistMode = row.classList.contains('artist-view-mode');
+                
+                // 获取核心数据
+                if (isCurrentlyArtistMode) {
+                    // 从 Artist 结构提取
+                    const b = row.querySelector('.msg-bubble');
+                    if(b) {
+                        // 从data-original属性获取原始文本
+                        rawText = b.getAttribute('data-original') || '';
+                        if(!rawText) {
+                            // 如果没有data-original，从文本节点获取
+                            const textContent = b.childNodes[0];
+                            if(textContent && textContent.nodeType === 3) {
+                                rawText = textContent.nodeValue.trim();
+                            }
+                        }
+                    }
+                    const cImg = row.querySelector('.msg-bubble img');
+                    if(cImg) rawImgSrc = cImg.src;
+                } else {
+                    // 从 Normal 结构提取
+                    const b = row.querySelector('.msg-bubble');
+                    if(b) {
+                        // 从data-original属性获取原始文本
+                        rawText = b.getAttribute('data-original') || '';
+                        if(!rawText) {
+                            // 如果没有data-original，从文本节点获取
+                            const textContent = b.childNodes[0];
+                            if(textContent && textContent.nodeType === 3) {
+                                rawText = textContent.nodeValue.trim();
+                            }
+                        }
+                    }
+                    const cImg = row.querySelector('img');
+                    if(cImg) rawImgSrc = cImg.src;
+                }
+                
+                // 清空这行
+                row.innerHTML = '';
+                row.classList.remove('artist-view-mode', 'my-msg');
+                row.className = 'msg-row my-msg';
+                
+                // 根据 state.isArtistPerspective 重建
+                if(state.isArtistPerspective) {
+                    row.classList.add('artist-view-mode');
+                    const avatarSrc = state.avatar || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                    
+                    let inner = '';
+                    if(rawText) {
+                        // 获取翻译文本
+                        const translatedText = state.translationOn ? 
+                            (translationMap[state.targetLang]?.[rawText] || rawText) : rawText;
+                        
+                        inner = `<div class="msg-bubble" data-original="${rawText}">${rawText}`;
+                        if(state.translationOn) inner += `<div class="trans-divider">${translatedText}</div>`;
+                        inner += `</div>`;
+                    } else if(rawImgSrc) {
+                        inner = `<div class="msg-bubble"><img src="${rawImgSrc}" style="max-width:150px; border-radius:10px;"></div>`;
+                    }
+                    
+                    row.innerHTML = `
+                        <div class="avatar-container">
+                            <div class="avatar-wrapper">
+                                <img src="${avatarSrc}">
+                            </div>
+                        </div>
+                        <div class="msg-content-col">
+                            <div class="name-row">
+                                <span class="artist-badge-small">ARTIST</span>
+                                <span class="name-text">${state.name}</span>
+                            </div>
+                            ${inner}
+                        </div>
+                    `;
+                    
+                } else {
+                    row.classList.remove('artist-view-mode');
+                    let inner = '';
+                    if(rawText) {
+                        // 获取翻译文本
+                        const translatedText = state.translationOn ? 
+                            (translationMap[state.targetLang]?.[rawText] || rawText) : rawText;
+                        
+                        inner = `<div class="msg-bubble" data-original="${rawText}">${rawText}`;
+                        if(state.translationOn) inner += `<div class="trans-divider">${translatedText}</div>`;
+                        inner += `</div>`;
+                    }
+                    else if(rawImgSrc) inner = `<img src="${rawImgSrc}">`;
+                    row.innerHTML = inner;
+                }
+            });
+            
+            // 提醒用户
+            // alert(state.isArtistPerspective ? "已切换至对方视角" : "已切换回自己视角");
+        }
+
+    </script>
+</body>
+</html>
+
